@@ -1,5 +1,7 @@
 package syncdo
 
+import "fmt"
+
 func KLock(k string) func() {
 	var kl *kmutex
 	var has bool
@@ -30,4 +32,8 @@ DO:
 		ll.Unlock()
 		kl.Unlock()
 	}
+}
+
+func Status() string {
+	return fmt.Sprintf("locked-len=%d lock-total=%d", len(klm), len(kls))
 }
