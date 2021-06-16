@@ -34,11 +34,10 @@ func main() {
 
 	for i := 200; i < 300; i++ {
 		go func(index int) {
-			lnum, k := new(int), strconv.Itoa(index%10) // do not reuse
-			syncdo.KLock(k, lnum)
+			unlock := syncdo.KLock(k, strconv.Itoa(index%10))
 			time.Sleep(100 * time.Millisecond)
 			fmt.Println(index)
-			syncdo.KUnlock(k, lnum)
+			unlock()
 		}(i)
 	}
 

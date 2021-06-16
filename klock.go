@@ -1,11 +1,8 @@
 package syncdo
 
-func KLock(k string, n *int) {
+func KLock(k string) func() {
 	var kl *kmutex
 	var has bool
-	if *n > 0 {
-		return
-	}
 
 	ll.Lock()
 	kl, has = klm[k]
@@ -18,19 +15,19 @@ func KLock(k string, n *int) {
 
 DO:
 	kl.num++
+	n := new(int)
 	*n = kl.num
 	ll.Unlock()
-	kl.Lock()
-}
-
-func KUnlock(k string, n *int) {
-	ll.Lock()
-	kl := klm[k]
-	if *n == kl.num {
-		kl.key = nil
-		kl.num = 0
-		delete(klm, k)
+	defer kl.Lock()
+	return func() {
+		ll.Lock()
+		kl := klm[k]
+		if *n == kl.num {
+			kl.key = nil
+			kl.num = 0
+			delete(klm, k)
+		}
+		ll.Unlock()
+		kl.Unlock()
 	}
-	ll.Unlock()
-	kl.Unlock()
 }
