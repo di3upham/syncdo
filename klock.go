@@ -35,5 +35,9 @@ DO:
 }
 
 func Status() string {
-	return fmt.Sprintf("locked-len=%d lock-total=%d", len(klm), len(kls))
+	ll.Lock()
+	runlen := len(klm)
+	llen := len(kls)
+	ll.Unlock()
+	return fmt.Sprintf("locked-len=%d lock-total=%d", runlen, llen)
 }
