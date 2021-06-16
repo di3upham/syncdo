@@ -6,8 +6,7 @@ package main
 
 import (
 	"fmt"
-	"strconv"
-	"time"
+
 	"github.com/di3upham/syncdo"
 )
 
