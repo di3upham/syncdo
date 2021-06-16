@@ -34,7 +34,7 @@ func main() {
 
 	for i := 200; i < 300; i++ {
 		go func(index int) {
-			unlock := syncdo.KLock(k, strconv.Itoa(index%10))
+			unlock := syncdo.KLock(strconv.Itoa(index % 10))
 			time.Sleep(100 * time.Millisecond)
 			fmt.Println(index)
 			unlock()
