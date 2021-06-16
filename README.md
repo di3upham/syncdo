@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-    "github.com/di3upham/syncdo"
+	"github.com/di3upham/syncdo"
 )
 
 func main() {
