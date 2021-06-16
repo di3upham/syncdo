@@ -23,7 +23,6 @@ DO:
 	defer kl.Lock()
 	return func() {
 		ll.Lock()
-		kl := klm[k]
 		if *n == kl.num {
 			kl.key = nil
 			kl.num = 0
