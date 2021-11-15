@@ -15,14 +15,12 @@ func KLock(k string) func() {
 
 	ll.Lock()
 	kl, has = klm[k]
-	if has {
-		goto DO
+	if !has {
+		kl = usekl()
+		kl.key = &k
+		klm[k] = kl
 	}
-	kl = usekl()
-	kl.key = &k
-	klm[k] = kl
 
-DO:
 	kl.num++
 	ll.Unlock()
 	defer kl.Lock()
