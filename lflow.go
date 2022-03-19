@@ -13,7 +13,7 @@ func NewLflow() *Lflow {
 	return &Lflow{inc: make(chan interface{}), errc: make(chan error), wg: &sync.WaitGroup{}}
 }
 
-func (lf *Lflow) Run(num int, f func(in interface{}) error) {
+func (lf *Lflow) Run(num int, f func(i int, in interface{}) error) {
 	if num <= 0 {
 		return
 	}
@@ -32,7 +32,7 @@ func (lf *Lflow) Run(num int, f func(in interface{}) error) {
 				if !has {
 					break
 				}
-				err = f(in)
+				err = f(fi, in)
 				if err != nil {
 					lf.earr[fi] = append(lf.earr[fi], err)
 					select {
