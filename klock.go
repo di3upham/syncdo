@@ -8,6 +8,7 @@ import (
 var ll = &sync.Mutex{}
 var klm = make(map[string]*kmutex)
 var kls = make([]*kmutex, 0)
+var delc int
 
 func KLock(k string) func() {
 	ll.Lock()
@@ -24,8 +25,16 @@ func KLock(k string) func() {
 		ll.Lock()
 		kl.num--
 		if kl.num == 0 {
-			kl.num = 0
 			delete(klm, k)
+			// go issue shrink map
+			delc++
+			if delc > 8192 && len(klm) < 128 {
+				m := make(map[string]*kmutex, len(klm))
+				for k, v := range klm {
+					m[k] = v
+				}
+				klm = m
+			}
 		}
 		ll.Unlock()
 		kl.Unlock()
