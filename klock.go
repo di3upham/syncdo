@@ -10,27 +10,21 @@ var klm = make(map[string]*kmutex)
 var kls = make([]*kmutex, 0)
 
 func KLock(k string) func() {
-	var kl *kmutex
-	var has bool
-
 	ll.Lock()
-	kl, has = klm[k]
+	kl, has := klm[k]
 	if !has {
 		kl = usekl()
-		kl.key = &k
 		klm[k] = kl
 	}
 
 	kl.num++
 	ll.Unlock()
-	defer kl.Lock()
+	kl.Lock()
 	return func() {
 		ll.Lock()
-		kl.rnum++
-		if kl.rnum == kl.num {
-			kl.key = nil
+		kl.num--
+		if kl.num == 0 {
 			kl.num = 0
-			kl.rnum = 0
 			delete(klm, k)
 		}
 		ll.Unlock()
@@ -48,7 +42,7 @@ func Status() string {
 
 func usekl() *kmutex {
 	for _, kl := range kls {
-		if kl.key == nil {
+		if kl.num == 0 {
 			return kl
 		}
 	}
@@ -59,7 +53,5 @@ func usekl() *kmutex {
 
 type kmutex struct {
 	*sync.Mutex
-	key  *string
-	num  int
-	rnum int
+	num int // number of waiters for the lock
 }
