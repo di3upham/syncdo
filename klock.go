@@ -34,6 +34,7 @@ func KLock(k string) func() {
 					m[k] = v
 				}
 				klm = m
+				delc = 0
 			}
 		}
 		ll.Unlock()
