@@ -17,7 +17,7 @@ func TestCPoolUse(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func(index int) {
 			var conn *testConn
-			conni, done := p.Use(0)
+			_, conni, done := p.Use()
 			conn, ok := conni.(*testConn)
 			if !ok {
 				t.Error("can not convert interface to testConn")
