@@ -16,6 +16,15 @@ func BLock(b ...string) func() {
 			break
 		}
 	}
+
+	// TODO more than one lock
+	for _, k := range b {
+		if blm[k] != nil && blm[k] != bl {
+			ll2.Unlock()
+			return nil
+		}
+	}
+
 	if bl == nil {
 		bl = usebl()
 	}
