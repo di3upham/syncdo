@@ -5,24 +5,23 @@ import (
 	"time"
 )
 
+type Conn interface {
+	IsClosed() bool
+}
+
 type Connin struct {
-	i       int
-	conn    interface{}
-	isClose bool
-	closeAt int64
-	openAt  int64
-	openIn  int64
-	begin   int64
-	end     int64
+	i     int
+	conn  Conn
+	begin int64
+	end   int64
 }
 
 const MINT = 2 * time.Millisecond // chanable
-const MAXT = 20 * time.Minute     // connable
 const WAIT = 20 * time.Second     // waitable
 
 type CPool struct {
 	*Sand
-	openConn  func() interface{}
+	openConn  func() Conn
 	cap       int
 	connins   []*Connin
 	conchan   chan *Connin
@@ -30,7 +29,7 @@ type CPool struct {
 	waitc     int64
 }
 
-func NewCPool(cap int, openConn func() interface{}) *CPool {
+func NewCPool(cap int, openConn func() Conn) *CPool {
 	if cap < 2 {
 		cap = 2
 	}
@@ -43,20 +42,18 @@ func NewCPool(cap int, openConn func() interface{}) *CPool {
 	pool.isNotfull = true
 
 	for i := 0; i < 2 && i < pool.cap; i++ {
-		t0 := time.Now().UnixNano()
 		conn := pool.openConn()
 		if conn == nil {
 			panic("open conn failure")
 		}
-		pool.connins[i] = &Connin{i: i, conn: conn, openAt: time.Now().UnixNano()}
-		pool.connins[i].openIn = pool.connins[i].openAt - t0
+		pool.connins[i] = &Connin{i: i, conn: conn}
 		pool.conchan <- pool.connins[i]
 	}
 
 	return pool
 }
 
-func (pool *CPool) Use() (int, interface{}, func()) {
+func (pool *CPool) Use() (int, Conn, func()) {
 	atomic.AddInt64(&pool.waitc, 1)
 	defer atomic.AddInt64(&pool.waitc, -1)
 	if waitc := atomic.LoadInt64(&pool.waitc); waitc > int64(pool.cap) {
@@ -79,14 +76,7 @@ func (pool *CPool) Use() (int, interface{}, func()) {
 	case connin = <-pool.conchan:
 	case <-time.After(MINT):
 		if pool.isNotfull {
-			go func() {
-				si := pool.Stream(func() {})
-				pool.Seep(si, func() {}, func() error {
-					pool.appendConnin()
-					time.Sleep(WAIT) // wait service
-					return nil
-				})
-			}()
+			go pool.appendConn()
 		}
 	}
 
@@ -99,6 +89,12 @@ func (pool *CPool) Use() (int, interface{}, func()) {
 
 	if connin == nil {
 		return 0, nil, func() {}
+	}
+
+	if connin.conn.IsClosed() {
+		if conn := pool.openConn(); conn != nil {
+			connin.conn = conn
+		}
 	}
 
 	var begin, end int64
@@ -117,54 +113,25 @@ func (pool *CPool) Use() (int, interface{}, func()) {
 	}
 }
 
-// callback
-func (pool *CPool) Closed(index int) {
-	pool.connins[index].isClose = true
-	pool.connins[index].closeAt = time.Now().UnixNano()
-	pool.isNotfull = true
-
-	// still connable
-	var connable bool
-	t0 := time.Now().UnixNano()
-	for _, connin := range pool.connins {
-		if connin != nil && (!connin.isClose || t0-connin.closeAt < MAXT.Nanoseconds()) {
-			connable = true
-			break
-		}
-	}
-	if !connable {
-		panic("lost connection")
-	}
-}
-
-func (pool *CPool) appendConnin() {
-	for i := 0; i < pool.cap; i++ {
-		if pool.connins[i] == nil {
-			t0 := time.Now().UnixNano()
-			if conn := pool.openConn(); conn != nil {
-				pool.connins[i] = &Connin{i: i, conn: conn, openAt: time.Now().UnixNano()}
-				pool.connins[i].openIn = pool.connins[i].openAt - t0
-				pool.conchan <- pool.connins[i]
+func (pool *CPool) appendConn() {
+	si := pool.Stream(func() {})
+	pool.Seep(si, func() {}, func() error {
+		for i := 0; i < pool.cap; i++ {
+			if pool.connins[i] == nil {
+				if conn := pool.openConn(); conn != nil {
+					pool.connins[i] = &Connin{i: i, conn: conn}
+					pool.conchan <- pool.connins[i]
+				}
+				break
 			}
-			break
 		}
-		if pool.connins[i].isClose {
-			t0 := time.Now().UnixNano()
-			if conn := pool.openConn(); conn != nil {
-				pool.connins[i].isClose = false
-				pool.connins[i].conn = conn
-				pool.connins[i].openAt = time.Now().UnixNano()
-				pool.connins[i].openIn = pool.connins[i].openAt - t0
+		pool.isNotfull = false
+		for i := 0; i < pool.cap; i++ {
+			if pool.connins[i] == nil {
+				pool.isNotfull = true
+				break
 			}
-			break
 		}
-	}
-
-	pool.isNotfull = false
-	for i := 0; i < pool.cap; i++ {
-		if pool.connins[i] == nil || pool.connins[i].isClose {
-			pool.isNotfull = true
-			break
-		}
-	}
+		return nil
+	})
 }

@@ -9,7 +9,7 @@ func TestCPoolUse(t *testing.T) {
 	var exo, aco int
 	p := NewCPool(
 		20,
-		func() interface{} {
+		func() Conn {
 			return &testConn{}
 		},
 	)
@@ -55,5 +55,10 @@ func TestCPoolUse(t *testing.T) {
 }
 
 type testConn struct {
-	sumcall int
+	sumcall  int
+	isClosed bool
+}
+
+func (conn *testConn) IsClosed() bool {
+	return conn.isClosed
 }
